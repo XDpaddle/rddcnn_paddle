@@ -1,0 +1,99 @@
+#### general settings
+name: rddcnn
+use_tb_logger: false
+model: sr
+distortion: sr
+scale: 1
+gpu_ids: [0]
+
+#### network structures
+network_G:
+  which_model_G: rddcnn
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: TrainSet
+    mode: denoise
+    type: Dataset_GaussianDenoising
+    sigma_type: random
+    sigma_range: [0,50]
+    in_ch: 1    ## RGB image
+    dataroot_gt: /home/data/disk2/wsq/Datasets/benchmark/Set14/gray
+    dataroot_lq: none
+    geometric_augs: true
+
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk
+
+    # data loader
+    use_shuffle: true
+    n_workers: 8  # per GPU
+    batch_size: 8
+    GT_size: 128
+    use_flip: true
+    use_rot: true
+    use_shuffle: true
+    num_worker_per_gpu: 8
+    batch_size_per_gpu: 8
+
+    ### -------------Progressive training--------------------------
+    mini_batch_sizes: [8,5,4,2,1,1]             # Batch size per gpu   
+    iters: [184000,128000,96000,72000,72000,48000]
+    gt_size: 384   # Max patch size for progressive training
+    gt_sizes: [128,160,192,256,320,384]  # Patch sizes for progressive training.
+    ### ------------------------------------------------------------
+
+    ### ------- Training on single fixed-patch size 128x128---------
+    # mini_batch_sizes: [8]   
+    # iters: [300000]
+    # gt_size: 128   
+    # gt_sizes: [128]
+    ### ------------------------------------------------------------
+
+    dataset_enlarge_ratio: 1
+    prefetch_mode: ~
+
+  val:
+    name: ValSet
+    mode: denoise
+    type: Dataset_GaussianDenoising
+    sigma_test: 15
+    in_ch: 1  ## RGB image
+    dataroot_gt: /home/data/disk2/wsq/Datasets/benchmark/Set14/gray
+    dataroot_lq: none
+    io_backend:
+      type: disk
+
+#### path
+path:
+  pretrain_model_G: ~
+  strict_load: true
+  resume_state: ~
+
+#### training settings: learning rate scheme, loss
+train:
+  lr_G: !!float 1e-4
+  lr_scheme: CosineAnnealingLR_Restart
+  beta1: 0.9
+  beta2: 0.999
+  niter: 1000000
+  warmup_iter: -1  # no warm up
+  T_period: [1000000]
+  restarts: [1000000]
+  restart_weights: [1]
+  eta_min: !!float 1e-7
+  lr_gamma: 0.5
+  clear_state: 1000000
+
+  pixel_criterion: l2
+  pixel_weight: 1.0
+
+  manual_seed: 10
+  val_freq: 5000
+
+#### logger
+logger:
+  print_freq: 100
+  save_checkpoint_freq: 500
